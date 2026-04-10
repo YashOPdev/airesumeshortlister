@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI HR Dashboard</title>
+
+    <style>
+        body {
+            font-family: 'Segoe UI';
+            background: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        textarea, input, button {
+            padding: 10px;
+            margin-top: 10px;
+            width: 100%;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        #progressBar {
+            width: 100%;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #progress {
+            width: 0%;
+            height: 20px;
+            background: #28a745;
+            text-align: center;
+            color: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #343a40;
+            color: white;
+            padding: 10px;
+        }
+
+        td {
+            padding: 10px;
+            text-align: center;
+        }
+
+        tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+
+        .selected { background: #d4edda; }
+        .rejected { background: #f8d7da; }
+        .maybe { background: #fff3cd; }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .download-btn {
+            background: #28a745;
+        }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <h2>AI HR Resume Dashboard</h2>
+    <button class="download-btn" onclick="downloadExcel()">Download Excel</button>
+</div>
+
+<div class="card">
+    <form id="form">
+        <input type="file" name="resumes" multiple required>
+
+        <textarea name="job_desc" placeholder="Enter Job Description"></textarea>
+
+        <input type="number" name="top_n" value="5">
+
+        <button type="submit">Analyze Resumes</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Progress</h3>
+    <div id="progressBar">
+        <div id="progress">0%</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Results</h3>
+    <table id="table">
+        <tr>
+            <th>Name</th>
+            <th>Score</th>
+            <th>Skills</th>
+            <th>Experience</th>
+            <th>Verdict</th>
+        </tr>
+    </table>
+</div>
+
+<script>
+let interval;
+
+document.getElementById("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    let formData = new FormData(e.target);
+
+    interval = setInterval(updateProgress, 1000);
+
+    let res = await fetch("/upload", {
+        method: "POST",
+        body: formData
+    });
+
+    clearInterval(interval);
+
+    let data = await res.json();
+
+    let table = document.getElementById("table");
+    table.innerHTML = table.rows[0].outerHTML;
+
+    data.all_candidates.forEach(c => {
+        let row = table.insertRow();
+
+        let cls = c.verdict === "Select" ? "selected" :
+                  c.verdict === "Reject" ? "rejected" : "maybe";
+
+        row.className = cls;
+
+        row.innerHTML = `
+            <td>${c.name}</td>
+            <td>${c.score}</td>
+            <td>${c.skills}</td>
+            <td>${c.experience}</td>
+            <td>${c.verdict}</td>
+        `;
+    });
+});
+
+async function updateProgress() {
+    let res = await fetch("/progress");
+    let data = await res.json();
+
+    if (data.total > 0) {
+        let percent = Math.floor((data.processed / data.total) * 100);
+
+        let bar = document.getElementById("progress");
+        bar.style.width = percent + "%";
+        bar.innerText = percent + "%";
+    }
+}
+
+// 🔥 Download Excel
+function downloadExcel() {
+    window.location.href = "/download";
+}
+</script>
+
+</body>
+</html>
